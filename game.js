@@ -272,7 +272,126 @@ Clicker.Game.prototype = {
 
     },
 
-    
+    update: function () {
+
+        // To create the shaking effect we can take advantage of a method built in to the Rectangle class called random. We call this from our update loop
+        this.tremorRect.random(this.target);
+
+        if (this.timeText.visible) {
+            this.timeText.text = 10 - Math.floor(this.timer.seconds);
+        }
+
+        //  sync our tweened color values into the shader
+        this.uniform[0] = this.colors.r;
+        this.uniform[1] = this.colors.g;
+        this.uniform[2] = this.colors.b;
+
+        this.filter.update();
+
+    },
+
+    // when the timer is done this is called
+    timeUp: function () {
+
+        // hides the large time digits from the game background
+        this.timeText.text = "";
+        this.timeText.visible = false;
+
+        // And we disable input events on the alien 
+        this.target.inputEnabled = false;
+
+        // fade him away over the duration of 1 second.
+        var tween = this.add.tween(this.target).to({
+            alpha: 0
+        }, 1000, "Linear", true);
+
+        this.scoreText.visible = true;
+
+        //  Did you score anything?
+        if (this.stars.total > 0) {
+            tween.onComplete.addOnce(this.displayStars, this);
+        } else {
+            this.time.events.add(2000, this.gameOver, this);
+        }
+
+    },
+
+    displayStars: function () {
+
+        // internal counter set to 0
+        this._i = 0;
+
+        // every star in group is sent to show start method
+        this.stars.forEach(this.showStar, this);
+
+    },
+
+    // 3 tweens are added for each star
+    showStar: function (star) {
+
+        // The first fades the star back in again to alpha 1. This happens over the course of 250ms, so is nice and fast
+        this.add.tween(star).to({
+            alpha: 1
+        }, 250, "Linear", true, this._i * 250);
+
+        // The second tween moves the star to x32 using aSine.easeIn ease
+        this.add.tween(star).to({
+            x: 32
+        }, 750, "Sine.easeIn", true, (this._i * 250) + 250);
+
+        // final tween moves it to y 32 using a Sine.easeOut tween both this and the last tween take 750ms to complete
+        var tween = this.add.tween(star).to({
+            y: 32
+        }, 750, "Sine.easeOut", true, (this._i * 250) + 250);
+
+        this._i++;
+
+        // When the tween completes it calls the addScore method. The boolean at the end dictates if it’s the last star to be set-up or not.
+        if (this._i === this.stars.total) {
+            tween.onComplete.add(this.addScore, this, 0, true);
+        } else {
+            tween.onComplete.add(this.addScore, this, 0, false);
+        }
+
+    },
+
+    addScore: function (tween, star, lastStar) {
+
+        // The score text is updated
+        this.score++;
+        this.scoreText.text = "SCORE: " + this.score;
+
+        // and if it’s the last star we wait 2seconds then end the game
+        if (lastStar) {
+            this.time.events.add(2000, this.gameOver, this);
+        }
+
+    },
+
+    // game over functions
+    gameOver: function () {
+
+        if (this.score > Clicker.score) {
+            Clicker.score = this.score;
+        }
+
+        // goes back to main menu state
+        this.state.start('Clicker.MainMenu');
+
+    },
+
+    render: function () {
+
+        // when you press D it will show this text
+        if (this.showDebug) {
+            this.game.debug.text("Duration: " + this.timer.seconds, 32, 32);
+            this.game.debug.text("R: " + this.colors.r, 32, 128);
+            this.game.debug.text("G: " + this.colors.g, 32, 128 + 32);
+            this.game.debug.text("B: " + this.colors.b, 32, 128 + 64);
+        }
+
+    },
+
 };
 
 
